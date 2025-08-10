@@ -7,18 +7,28 @@
 <style>
   :root { --bg:#000; --fg:#a6ff00; }
   html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  /* global ambience */
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background:
+      radial-gradient(ellipse at center, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.75) 100%),
+      repeating-linear-gradient(180deg, rgba(166,255,0,.03) 0 2px, rgba(0,0,0,.03) 2px 4px);
+    mix-blend-mode: normal;
+  }
+
   .wrap { min-height:100%; display:flex; align-items:center; justify-content:center; padding:32px; position:relative; overflow:hidden; }
   .panel { width:min(900px,95vw); border:1px solid #093; background:rgba(0,0,0,.85); box-shadow:0 0 40px #0f0a; border-radius:12px; overflow:hidden; }
   .header { padding:28px 28px 0; }
-  .title { font-size:clamp(22px,4vw,40px); font-weight:800; text-shadow:0 0 12px #0f05; }
-  .sub { opacity:.85; margin-top:6px; font-size:clamp(12px,2vw,16px); line-height:1.4em; white-space:pre-line; }
+  .title { font-size:clamp(22px,4vw,40px); font-weight:800; text-shadow:0 0 12px #0f05; filter:drop-shadow(0 0 6px #0f02); }
+  .sub { opacity:.92; margin-top:6px; font-size:clamp(12px,2vw,16px); line-height:1.4em; white-space:pre-line; }
   .code { padding:22px 28px; background:linear-gradient(180deg, #000 0%, #060 100%); border-top:1px solid #093; }
   .pillrow { display:flex; gap:12px; margin-top:14px; }
-  .pill { flex:1; padding:12px 0; text-align:center; border-radius:999px; border:1px solid #0a3; cursor:pointer; user-select:none; transition:transform .08s ease; }
-  .pill:hover { transform:translateY(-1px); }
+  .pill { flex:1; padding:12px 0; text-align:center; border-radius:999px; border:1px solid #0a3; cursor:pointer; user-select:none; transition:transform .08s ease, box-shadow .15s ease, background .15s ease; }
+  .pill:hover { transform:translateY(-1px); box-shadow:0 0 18px #0f05; }
   .pill.red { background:#210000; }
   .pill.blue { background:#001a29; }
-  .hidden { display:none; }
+  .hidden { display:none !important; }
   .rsvp, .ending { padding:24px; background:#000; border-top:1px solid #093; }
   .footer { padding:12px 20px; font-size:12px; opacity:.7; text-align:center; }
   .rain { position:absolute; inset:0; pointer-events:none; opacity:.15; }
@@ -30,24 +40,54 @@
     border:1px solid #0a3; border-radius:999px;
     padding:8px 12px; font-size:14px; cursor:pointer; z-index:5;
   }
+
   /* Landing overlay */
   .overlay {
     position: fixed; inset:0; display:flex; align-items:center; justify-content:center;
-    background: radial-gradient(ellipse at center, rgba(0,30,0,.85) 0%, rgba(0,0,0,1) 60%);
+    background: radial-gradient(ellipse at center, rgba(0,30,0,.9) 0%, rgba(0,0,0,1) 70%);
     z-index:10; text-align:center; backdrop-filter: blur(2px);
+    transition: opacity 600ms ease, transform 600ms ease;
+    will-change: opacity, transform;
   }
+  .overlay.fadeout { opacity:0; transform:scale(1.03); pointer-events:none; }
   .overlay-inner {
-    padding:32px; border:1px solid #093; border-radius:16px; background:rgba(0,0,0,.7);
+    padding:36px; border:1px solid #093; border-radius:16px; background:rgba(0,0,0,.65);
     box-shadow:0 0 40px #0f0a; width:min(820px,92vw);
+    animation: panelIn 700ms ease both;
   }
-  .overlay h1 { margin:0 0 8px 0; font-size:clamp(26px,5vw,56px); letter-spacing:.04em; text-shadow:0 0 18px #0f09; }
-  .overlay p { margin:0 0 18px 0; opacity:.9; }
+  .overlay h1 { margin:0 0 10px 0; font-size:clamp(26px,5vw,56px); letter-spacing:.04em; text-shadow:0 0 18px #0f09; }
+  .overlay p { margin:0 18px 22px; opacity:.9; }
   .cta {
     margin-top:8px; display:inline-block; padding:14px 22px; border-radius:999px;
     border:1px solid #0a3; background:#003b00; color:var(--fg); cursor:pointer;
     text-decoration:none; font-weight:700; letter-spacing:.03em;
+    box-shadow:0 0 18px #0f03;
+    transition:transform .1s ease, box-shadow .2s ease, background .2s ease;
   }
-  .cta:hover { background:#005000; }
+  .cta:hover { background:#005000; transform:translateY(-1px); box-shadow:0 0 28px #0f07; }
+
+  /* App intro after overlay */
+  .app-enter { animation: appIn 650ms ease 120ms both; }
+
+  /* Cinematic blackout flash between scenes */
+  .blackout {
+    position:fixed; inset:0; background:#000; z-index:9; opacity:0; pointer-events:none;
+    animation: blackout 600ms ease both;
+  }
+
+  @keyframes panelIn {
+    from { transform: translateY(8px) scale(.98); opacity:0; }
+    to { transform: translateY(0) scale(1); opacity:1; }
+  }
+  @keyframes appIn {
+    from { opacity:0; transform: translateY(8px) scale(.995); filter:blur(2px); }
+    to   { opacity:1; transform: translateY(0) scale(1); filter:blur(0); }
+  }
+  @keyframes blackout {
+    0%   { opacity:0; }
+    35%  { opacity:1; }
+    100% { opacity:0; }
+  }
 </style>
 </head>
 <body>
@@ -63,8 +103,11 @@
   <div class="rain"><canvas id="rain1"></canvas></div>
 </div>
 
+<!-- Cinematic flash layer -->
+<div id="blackout" class="blackout hidden"></div>
+
 <div class="wrap hidden" id="app">
-  <div class="panel">
+  <div class="panel app-enter">
     <div class="header">
       <div class="title">TYLER’S 30TH BIRTHDAY BASH // ENTER THE MATRIX</div>
       <div class="sub">Where: Tim’s House
@@ -113,22 +156,23 @@ Expect: Themed cocktails, games, costume contest (Judged by Tyler)
   const ending = document.getElementById('ending');
   const soundBtn = document.getElementById('soundBtn');
   const bgm = document.getElementById('bgm');
+  const blackout = document.getElementById('blackout');
 
   let usingSynth = false;
-  let ctx, gain, osc, lfo;
+  let ac, gain, osc, lfo;
 
   function startSynth(target=0.05, fadeMs=1500) {
     usingSynth = true;
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    gain = ctx.createGain(); gain.gain.value = 0.0;
-    const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 400;
-    osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 55;
-    lfo = ctx.createOscillator(); lfo.frequency.value = 0.2;
-    const lfoGain = ctx.createGain(); lfoGain.gain.value = 280;
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    gain = ac.createGain(); gain.gain.value = 0.0;
+    const filter = ac.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 400;
+    osc = ac.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 55;
+    lfo = ac.createOscillator(); lfo.frequency.value = 0.2;
+    const lfoGain = ac.createGain(); lfoGain.gain.value = 280;
     lfo.connect(lfoGain).connect(filter.frequency);
-    osc.connect(filter).connect(gain).connect(ctx.destination);
+    osc.connect(filter).connect(gain).connect(ac.destination);
     osc.start(); lfo.start();
-    const now = ctx.currentTime;
+    const now = ac.currentTime;
     gain.gain.setValueAtTime(0.0, now);
     gain.gain.linearRampToValueAtTime(target, now + fadeMs/1000);
   }
@@ -153,16 +197,30 @@ Expect: Themed cocktails, games, costume contest (Judged by Tyler)
 
   function stopAudio() {
     if (!usingSynth) { bgm.pause(); bgm.currentTime = 0; }
-    else if (ctx) { ctx.close(); usingSynth = false; }
+    else if (ac) { ac.close(); usingSynth = false; }
     soundBtn.textContent = '🔇 sound off';
   }
 
+  // ENTER -> cinematic transition + audio start
   enterBtn.onclick = async () => {
-    overlay.classList.add('hidden');
-    app.classList.remove('hidden');
-    await startAudioFade();
+    // fade overlay out
+    overlay.classList.add('fadeout');
+
+    // cinematic flash
+    blackout.classList.remove('hidden');
+    blackout.addEventListener('animationend', () => {
+      blackout.classList.add('hidden');
+    }, { once:true });
+
+    // when overlay transition ends, hide it entirely and show app
+    overlay.addEventListener('transitionend', async () => {
+      overlay.classList.add('hidden'); // ensures it doesn't stick around
+      app.classList.remove('hidden');
+      await startAudioFade();
+    }, { once:true });
   };
 
+  // Red/Blue behavior
   document.getElementById('red').onclick = () => {
     rsvp.classList.remove('hidden');
     ending.classList.add('hidden');
@@ -173,11 +231,13 @@ Expect: Themed cocktails, games, costume contest (Judged by Tyler)
     stopAudio();
   };
 
+  // Manual toggle
   soundBtn.onclick = async () => {
     if (soundBtn.textContent.includes('off')) await startAudioFade();
     else stopAudio();
   };
 
+  // Matrix code rain (overlay + app)
   function makeRain(canvasId){
     const c = document.getElementById(canvasId);
     const ctx2 = c.getContext('2d');
