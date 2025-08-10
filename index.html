@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Enter the Matrix – Tyler's 30th</title>
+<style>
+  :root { --bg:#000; --fg:#a6ff00; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .wrap { min-height:100%; display:flex; align-items:center; justify-content:center; padding:32px; position:relative; overflow:hidden; }
+  .panel { width:min(900px,95vw); border:1px solid #093; background:rgba(0,0,0,.85); box-shadow:0 0 40px #0f0a; border-radius:12px; overflow:hidden; }
+  .header { padding:28px 28px 0; }
+  .title { font-size:clamp(22px,4vw,40px); font-weight:800; text-shadow:0 0 12px #0f05; }
+  .sub { opacity:.85; margin-top:6px; font-size:clamp(12px,2vw,16px); line-height:1.4em; white-space:pre-line; }
+  .code { padding:22px 28px; background:linear-gradient(180deg, #000 0%, #060 100%); border-top:1px solid #093; }
+  .pillrow { display:flex; gap:12px; margin-top:14px; }
+  .pill { flex:1; padding:12px 0; text-align:center; border-radius:999px; border:1px solid #0a3; cursor:pointer; user-select:none; transition:transform .08s ease; }
+  .pill:hover { transform:translateY(-1px); }
+  .pill.red { background:#210000; }
+  .pill.blue { background:#001a29; }
+  .hidden { display:none; }
+  .rsvp, .ending { padding:24px; background:#000; border-top:1px solid #093; }
+  .footer { padding:12px 20px; font-size:12px; opacity:.7; text-align:center; }
+  .rain { position:absolute; inset:0; pointer-events:none; opacity:.15; }
+  canvas { width:100%; height:100%; display:block; }
+  a { color: var(--fg); }
+  .sound-toggle {
+    position: fixed; top: 12px; right: 12px;
+    background:#001700; color:var(--fg);
+    border:1px solid #0a3; border-radius:999px;
+    padding:8px 12px; font-size:14px; cursor:pointer; z-index:5;
+  }
+</style>
+</head>
+<body>
+<button class="sound-toggle" id="soundBtn">🔇 sound off</button>
+<div class="wrap">
+  <div class="panel">
+    <div class="header">
+      <div class="title">TYLER’S 30TH BIRTHDAY BASH // ENTER THE MATRIX</div>
+      <div class="sub">Where: Tim’s House
+When: Sat, October 25th, 7:30 PM
+Wear: Black trench coats, leather, combat boots, sunglasses at night.
+
+Expect: Themed cocktails, games, costume contest (Judged by Tyler) 
+
+**Drinks are taken care of - No open containers - Canned/Bottled drinks are OK :)**</div>
+    </div>
+
+    <div class="code">
+      <div>Which pill do you take?</div>
+      <div class="pillrow">
+        <div class="pill red" id="red">take the red pill</div>
+        <div class="pill blue" id="blue">take the blue pill</div>
+      </div>
+    </div>
+
+    <div class="rsvp hidden" id="rsvp">
+      <iframe
+        src="https://docs.google.com/forms/d/e/1FAIpQLSe1L0ZX8z3bBOadDaILgS88_Y7GOrQx83LYzjN4_UsCrnXxzw/viewform?embedded=true"
+        width="100%" height="620" frameborder="0" marginheight="0" marginwidth="0" title="RSVP">
+      Loading…
+      </iframe>
+      <div class="footer">
+        If the form doesn’t load, <a href="https://docs.google.com/forms/d/e/1FAIpQLSe1L0ZX8z3bBOadDaILgS88_Y7GOrQx83LYzjN4_UsCrnXxzw/viewform?usp=sharing" target="_blank" rel="noopener">open RSVP in a new tab</a>.
+      </div>
+    </div>
+
+    <div class="ending hidden" id="ending">
+      <p>You chose the Blue Pill. The simulation continues. 💤</p>
+      <p class="footer">Change your mind? Reload the page and choose wisely.</p>
+    </div>
+  </div>
+  <div class="rain"><canvas id="rain"></canvas></div>
+</div>
+
+<audio id="bgm" src="music.mp3" loop preload="auto"></audio>
+
+<script>
+  const rsvp = document.getElementById('rsvp');
+  const ending = document.getElementById('ending');
+  const soundBtn = document.getElementById('soundBtn');
+  const bgm = document.getElementById('bgm');
+
+  let usingSynth = false;
+  let ctx, gain, osc, lfo;
+
+  function startSynth(target=0.05, fadeMs=3000) {
+    usingSynth = true;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    gain = ctx.createGain(); gain.gain.value = 0.0; // start muted
+    const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 400;
+
+    // Bass drone
+    osc = ctx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 55; // A1
+
+    // Slow wobble
+    lfo = ctx.createOscillator(); lfo.frequency.value = 0.2;
+    const lfoGain = ctx.createGain(); lfoGain.gain.value = 280;
+    lfo.connect(lfoGain).connect(filter.frequency);
+
+    osc.connect(filter).connect(gain).connect(ctx.destination);
+    osc.start(); lfo.start();
+
+    // fade in
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0, now);
+    gain.gain.linearRampToValueAtTime(target, now + fadeMs/1000);
+  }
+
+  async function autoplayFadeIn(targetVol=0.4, fadeMs=3000) {
+    // Try HTML5 audio first
+    try {
+      bgm.volume = 0.0;
+      bgm.muted = false; // some browsers require muted true; we'll handle failures
+      const playPromise = bgm.play();
+      if (playPromise) await playPromise;
+      // if we got here, audio is playing at 0 -> fade up
+      const steps = 30, step = targetVol/steps, interval = fadeMs/steps;
+      let v = 0;
+      const id = setInterval(() => {
+        v += step;
+        bgm.volume = Math.min(targetVol, v);
+        if (v >= targetVol) clearInterval(id);
+      }, interval);
+      soundBtn.textContent = '🔊 sound on';
+      return;
+    } catch (e) {
+      // fallback to synth
+      try {
+        startSynth(0.05, fadeMs);
+        soundBtn.textContent = '🔊 sound on';
+        return;
+      } catch (e2) {
+        // final fallback: wait for any interaction to retry
+        const resume = async () => {
+          document.removeEventListener('touchstart', resume);
+          document.removeEventListener('pointerdown', resume);
+          document.removeEventListener('mousemove', resume);
+          await autoplayFadeIn(targetVol, fadeMs);
+        };
+        document.addEventListener('touchstart', resume, { once:true });
+        document.addEventListener('pointerdown', resume, { once:true });
+        document.addEventListener('mousemove', resume, { once:true });
+      }
+    }
+  }
+
+  function stopAudio() {
+    if (!usingSynth) {
+      bgm.pause(); bgm.currentTime = 0;
+    } else if (ctx) {
+      ctx.close(); usingSynth = false;
+    }
+    soundBtn.textContent = '🔇 sound off';
+  }
+
+  // Red/Blue behavior (unchanged for content)
+  document.getElementById('red').onclick = () => {
+    rsvp.classList.remove('hidden');
+    ending.classList.add('hidden');
+  };
+  document.getElementById('blue').onclick = () => {
+    ending.classList.remove('hidden');
+    rsvp.classList.add('hidden');
+    stopAudio();
+  };
+
+  // Manual toggle
+  soundBtn.onclick = async () => {
+    if (soundBtn.textContent.includes('off')) {
+      await autoplayFadeIn();
+    } else {
+      stopAudio();
+    }
+  };
+
+  // Kick off music auto-fade shortly after load
+  window.addEventListener('load', () => {
+    setTimeout(() => autoplayFadeIn(), 900); // slight delay feels intentional
+  });
+
+  // Matrix code rain
+  const c = document.getElementById('rain');
+  const ctx2 = c.getContext('2d');
+  function resize(){ c.width = window.innerWidth; c.height = window.innerHeight; }
+  window.addEventListener('resize', resize); resize();
+  const fontSize = 16;
+  let columns = Math.floor(c.width / fontSize);
+  let drops = Array(columns).fill(1);
+  const chars = "アカサタナハマヤラワ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$#";
+  function draw(){
+    ctx2.fillStyle = "rgba(0,0,0,0.08)"; ctx2.fillRect(0,0,c.width,c.height);
+    ctx2.fillStyle = "#a6ff00"; ctx2.font = fontSize + "px monospace";
+    for(let i=0;i<drops.length;i++){
+      const text = chars.charAt(Math.floor(Math.random()*chars.length));
+      ctx2.fillText(text, i*fontSize, drops[i]*fontSize);
+      if(drops[i]*fontSize > c.height && Math.random() > 0.975) drops[i]=0;
+      drops[i]++;
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+</script>
+</body>
+</html>
